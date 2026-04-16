@@ -1,0 +1,65 @@
+# ========================================================================
+FROM node:24-slim AS hdb-resale-app-dashboard-builder
+
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+
+WORKDIR /app
+
+# For build stage, it requires all project files to be present
+# Clean install dependencies
+COPY dashboard/package*.json /app
+RUN npm install
+
+# Perform build
+COPY dashboard/ /app
+RUN npm run build
+
+# Pre-install DuckDB extensions so they're available offline at runtime
+RUN node -e "\
+  const{DuckDBInstance}=require('@duckdb/node-api');\
+  (async()=>{\
+    const db=await DuckDBInstance.create(':memory:');\
+    const c=await db.connect();\
+    await c.run('INSTALL httpfs; INSTALL aws;');\
+    console.log('httpfs and aws extensions installed');\
+    process.exit(0);\
+  })()"
+
+# ========================================================================
+FROM node:24-slim AS hdb-resale-app-dashboard
+
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+
+WORKDIR /app
+
+# Install system dependencies
+# curl is needed for health check
+RUN apt-get -y update
+RUN apt-get -y install curl unzip
+
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+  unzip awscliv2.zip && \
+  ./aws/install && \
+  rm -rf awscliv2.zip ./aws
+
+# Copy over build files
+COPY --from=hdb-resale-app-dashboard-builder /app/.next/standalone /app
+COPY --from=hdb-resale-app-dashboard-builder /app/.next/static /app/.next/static
+COPY --from=hdb-resale-app-dashboard-builder /app/.next/cache /app/.next/cache
+COPY --from=hdb-resale-app-dashboard-builder /app/public /app/public
+
+# Copy DuckDB native bindings — these are excluded from standalone output
+# because they are listed in serverExternalPackages
+COPY --from=hdb-resale-app-dashboard-builder /app/node_modules/@duckdb /app/node_modules/@duckdb
+
+# Copy pre-installed DuckDB extensions for offline use
+COPY --from=hdb-resale-app-dashboard-builder /root/.duckdb/extensions /root/.duckdb/extensions
+
+COPY docker/docker_entrypoint/docker-entrypoint-dashboard.sh /app/docker-entrypoint.sh
+
+EXPOSE 3000
+
+ENTRYPOINT ["/bin/bash", "/app/docker-entrypoint.sh"]

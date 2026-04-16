@@ -1,0 +1,28 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ECRAuthorizationToken",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ECRHDBResaleAppRepoReadAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:DescribeRepositories",
+                "ecr:ListImages"
+            ],
+            "Resource": [
+                "arn:aws:ecr:${aws_region}:${aws_account_id}:repository/${image_name_etl}",
+                "arn:aws:ecr:${aws_region}:${aws_account_id}:repository/${image_name_dashboard}"
+            ]
+        }
+    ]
+}

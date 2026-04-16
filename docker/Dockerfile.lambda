@@ -1,0 +1,13 @@
+# ========================================================================
+FROM public.ecr.aws/lambda/python:3.12 AS hdb-resale-app-inference-lambda
+
+# Copy function code and model
+COPY ./src/lambda/function/hdbresale_inference_api.py ${LAMBDA_TASK_ROOT} 
+COPY ./data/models/resale_price_prediction_model.joblib ${LAMBDA_TASK_ROOT} 
+
+# Install dependencies
+# NOTE the dependencies versions must be the same as project
+RUN pip3 install scikit-learn==1.8.0 pandas==2.3.3 joblib==1.5.3
+
+# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
+CMD [ "hdbresale_inference_api.lambda_handler" ]

@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-dark-primary: #8A7650;
+  --color-dark-secondary: #8E977D;
+  --color-light-primary: #ECE7D1;
+  --color-light-secondary: #DBCEA5;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* Leaflet overrides for dark theme */
+.leaflet-container {
+  background: #1e293b;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

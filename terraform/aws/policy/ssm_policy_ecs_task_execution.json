@@ -1,0 +1,17 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "SSMGetParametersForSecrets",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:*:parameter/endpoint/*",
+                "arn:aws:ssm:*:*:parameter/dashboard/*"
+            ]
+        }
+    ]
+}

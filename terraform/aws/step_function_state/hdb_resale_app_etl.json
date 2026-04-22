@@ -1,0 +1,190 @@
+{
+    "Comment": "HDB Resale App ETL Pipeline",
+    "StartAt": "Ingest",
+    "States": {
+        "Ingest": {
+            "Comment": "Ingest and process data from data.gov.sg",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+                "Cluster": "${ecs_cluster}",
+                "TaskDefinition": "${ecs_task_definition}",
+                "LaunchType": "EC2",
+                "Overrides": {
+                    "ContainerOverrides": [
+                        {
+                            "Name": "etl",
+                            "Command": [
+                                "--step",
+                                "ingest",
+                                "--config",
+                                "config/pipeline.yaml"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "ResultPath": "$.ingestResult",
+            "Next": "Geocode",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "PipelineFailed",
+                    "ResultPath": "$.error"
+                }
+            ]
+        },
+        "Geocode": {
+            "Comment": "Geocode addresses to get latitude and longitude",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+                "Cluster": "${ecs_cluster}",
+                "TaskDefinition": "${ecs_task_definition}",
+                "LaunchType": "EC2",
+                "Overrides": {
+                    "ContainerOverrides": [
+                        {
+                            "Name": "etl",
+                            "Command": [
+                                "--step",
+                                "geocode",
+                                "--config",
+                                "config/pipeline.yaml"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "ResultPath": "$.geocodeResult",
+            "Next": "Process",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "PipelineFailed",
+                    "ResultPath": "$.error"
+                }
+            ]
+        },
+        "Process": {
+            "Comment": "Process data to make them ready for model training and dashboard visualisation",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+                "Cluster": "${ecs_cluster}",
+                "TaskDefinition": "${ecs_task_definition}",
+                "LaunchType": "EC2",
+                "Overrides": {
+                    "ContainerOverrides": [
+                        {
+                            "Name": "etl",
+                            "Command": [
+                                "--step",
+                                "process",
+                                "--config",
+                                "config/pipeline.yaml"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "ResultPath": "$.processResult",
+            "Next": "Train",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "PipelineFailed",
+                    "ResultPath": "$.error"
+                }
+            ]
+        },
+        "Train": {
+            "Comment": "Train an ML model to predict prices",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+                "Cluster": "${ecs_cluster}",
+                "TaskDefinition": "${ecs_task_definition}",
+                "LaunchType": "EC2",
+                "Overrides": {
+                    "ContainerOverrides": [
+                        {
+                            "Name": "etl",
+                            "Command": [
+                                "--step",
+                                "train",
+                                "--config",
+                                "config/pipeline.yaml"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "ResultPath": "$.trainResult",
+            "Next": "PipelineSucceeded",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 2.0
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "PipelineFailed",
+                    "ResultPath": "$.error"
+                }
+            ]
+        },
+        "PipelineSucceeded": {
+            "Type": "Succeed"
+        },
+        "PipelineFailed": {
+            "Type": "Fail",
+            "Error": "PipelineExecutionFailed",
+            "Cause": "One or more ETL steps failed. Check CloudWatch logs for details."
+        }
+    }
+}

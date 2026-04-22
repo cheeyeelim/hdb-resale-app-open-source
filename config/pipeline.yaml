@@ -1,0 +1,30 @@
+data_source:
+  api_base_url: "https://api-open.data.gov.sg/v1/public/api/datasets"
+  resource_id: "d_8b84c4ee58e3cfc0ece0d773c8ca6abc"
+  # api_key is not required, but gives increased request limit
+  api_key: "${oc.env:DATA_GOV_SG_API_KEY,PLACEHOLDER_KEY}"
+
+geocoding:
+  place_index: "explore.place.Here"
+  rate_limit_delay: 0.1
+
+aws:
+  region: "ap-southeast-1"
+  s3_bucket: "hdb-resale-data-20260217"
+  s3_prefix:
+    raw: "raw"
+    geocoded: "geocoded"
+    processed: "processed"
+    models: "models"
+
+model:
+  # Current model used is scikit-learn's HistGradientBoostingRegressor
+  params:
+    max_iter: 500
+    learning_rate: 0.05
+    early_stopping: True
+    random_state: 42
+  test_size: 0.2
+
+local:
+  data_dir: "./data"
